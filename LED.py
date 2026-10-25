@@ -21,7 +21,7 @@ CAPTUR_CARD_INDEX = 2  # Adjust if your capture card index is different
 
 # Define your base color here (Red, Green, Blue from 0 to 255)
 # Examples: Cyan = (0, 255, 255), Purple = (255, 0, 255), Red = (255, 0, 0), Blue = (0, 0, 255)
-BASE_COLOR = (255, 255, 255)  # Currently set to Red
+BASE_COLOR = (255, 255, 255)  # Currently set to White
 GREEN_COLOR = (0, 255, 0)
 OFF_COLOR = (0, 0, 0)  # Color to turn off the lights (black)
 
@@ -61,24 +61,11 @@ def _ble_worker():
                             # 1. Start at base color baseline
                             await client.write_gatt_char(target_char, base_cmd)
                             
-                            # 2. Fade from Base Color to Green
-                            '''
-                            for i in range(steps + 1):
-                                progress = i / steps
-                                r = int(BASE_COLOR[0] + (GREEN_COLOR[0] - BASE_COLOR[0]) * progress)
-                                g = int(BASE_COLOR[1] + (GREEN_COLOR[1] - BASE_COLOR[1]) * progress)
-                                b = int(BASE_COLOR[2] + (GREEN_COLOR[2] - BASE_COLOR[2]) * progress)
-                                
-                                color_cmd = bytearray([0x56, r, g, b, 0x00, 0xF0, 0xAA])
-                                await client.write_gatt_char(target_char, color_cmd)
-                                await asyncio.sleep(interval)
-                            '''  
-
-                            # Buzzing Strobe effect for green.
+                            # 2. Buzzing Strobe effect for green
                             for i in range(steps + 1):
                                 await client.write_gatt_char(target_char, bytearray([0x56, GREEN_COLOR[0], GREEN_COLOR[1], GREEN_COLOR[2], 0x00, 0xF0, 0xAA]))
                                 await asyncio.sleep(interval / 2)
-                                # Flash bright white (or base)
+                                # Flash off (or base/black)
                                 await client.write_gatt_char(target_char, bytearray([0x56, OFF_COLOR[0], OFF_COLOR[1], OFF_COLOR[2], 0x00, 0xF0, 0xAA]))
                                 await asyncio.sleep(interval / 2) 
 
@@ -133,8 +120,8 @@ def run_detection():
     # Use DirectShow backend to prevent MSMF locks with OBS
     cap = cv2.VideoCapture(CAPTUR_CARD_INDEX, cv2.CAP_DSHOW)
 
-    # Load the template image for the "TIMING EXCELLENT" banner
-    template = cv2.imread('template.png', cv2.IMREAD_GRAYSCALE)
+    # Load the template image in color (BGR) for precise color matching
+    template = cv2.imread('template.png', cv2.IMREAD_COLOR)
     if template is None:
         print("Error: 'template.png' not found! Please save a screenshot of the banner as 'template.png' in this directory.")
         return
@@ -147,11 +134,8 @@ def run_detection():
             print("Failed to grab frame from capture card.")
             break
 
-        # Convert full frame to grayscale for template matching
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # Run template matching to find the exact banner shape
-        result = cv2.matchTemplate(gray_frame, template, cv2.TM_CCOEFF_NORMED)
+        # Run multi-channel color template matching directly on the BGR frame
+        result = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
         # Show live feed window

@@ -1,4 +1,5 @@
 import sys
+
 sys.coinit_flags = 0  # Force Multi-Threaded Apartment mode for Windows Bluetooth callbacks
 
 import asyncio
@@ -11,6 +12,7 @@ from bleak import BleakClient
 # Fix for Windows GUI / OpenCV threading conflict with Bleak callbacks
 try:
     from bleak.backends.winrt.util import uninitialize_sta
+
     uninitialize_sta()
 except ImportError:
     pass
@@ -29,11 +31,12 @@ OFF_COLOR = (0, 0, 0)  # Color to turn off the lights (black)
 _ble_queue = queue.Queue()
 _is_animating = threading.Event()
 
+
 def _ble_worker():
     """Background worker thread to run asynchronous BLE code safely away from OpenCV GUI"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
+
     async def run_client(is_startup=False, is_trigger=False):
         try:
             async with BleakClient(LIGHT_MAC_ADDRESS, timeout=5.0) as client:
@@ -46,7 +49,7 @@ def _ble_worker():
                                 break
                         if target_char:
                             break
-                    
+
                     if target_char:
                         base_cmd = bytearray([0x56, BASE_COLOR[0], BASE_COLOR[1], BASE_COLOR[2], 0x00, 0xF0, 0xAA])
 
@@ -57,33 +60,36 @@ def _ble_worker():
                             steps = 5
                             fade_duration = 0.8
                             interval = fade_duration / steps
-                            
+
                             # 1. Start at base color baseline
                             await client.write_gatt_char(target_char, base_cmd)
-                            
+
                             # 2. Buzzing Strobe effect for green
                             for i in range(steps + 1):
-                                await client.write_gatt_char(target_char, bytearray([0x56, GREEN_COLOR[0], GREEN_COLOR[1], GREEN_COLOR[2], 0x00, 0xF0, 0xAA]))
+                                await client.write_gatt_char(target_char, bytearray(
+                                    [0x56, GREEN_COLOR[0], GREEN_COLOR[1], GREEN_COLOR[2], 0x00, 0xF0, 0xAA]))
                                 await asyncio.sleep(interval / 2)
                                 # Flash off (or base/black)
-                                await client.write_gatt_char(target_char, bytearray([0x56, OFF_COLOR[0], OFF_COLOR[1], OFF_COLOR[2], 0x00, 0xF0, 0xAA]))
-                                await asyncio.sleep(interval / 2) 
+                                await client.write_gatt_char(target_char, bytearray(
+                                    [0x56, OFF_COLOR[0], OFF_COLOR[1], OFF_COLOR[2], 0x00, 0xF0, 0xAA]))
+                                await asyncio.sleep(interval / 2)
 
-                            # 3. Hold solid green for about a second longer
-                            await client.write_gatt_char(target_char, bytearray([0x56, GREEN_COLOR[0], GREEN_COLOR[1], GREEN_COLOR[2], 0x00, 0xF0, 0xAA]))
+                                # 3. Hold solid green for about a second longer
+                            await client.write_gatt_char(target_char, bytearray(
+                                [0x56, GREEN_COLOR[0], GREEN_COLOR[1], GREEN_COLOR[2], 0x00, 0xF0, 0xAA]))
                             await asyncio.sleep(1.0)
-                            
+
                             # 4. Fade back from Green to Base Color
                             for i in range(steps + 1):
                                 progress = i / steps
                                 r = int(GREEN_COLOR[0] + (BASE_COLOR[0] - GREEN_COLOR[0]) * progress)
                                 g = int(GREEN_COLOR[1] + (BASE_COLOR[1] - GREEN_COLOR[1]) * progress)
                                 b = int(GREEN_COLOR[2] + (BASE_COLOR[2] - GREEN_COLOR[2]) * progress)
-                                
+
                                 color_cmd = bytearray([0x56, r, g, b, 0x00, 0xF0, 0xAA])
                                 await client.write_gatt_char(target_char, color_cmd)
                                 await asyncio.sleep(interval)
-                                
+
                             # 5. End on solid base color
                             await client.write_gatt_char(target_char, base_cmd)
                     else:
@@ -103,17 +109,19 @@ def _ble_worker():
             _is_animating.clear()  # Unlock detection only when the full LED sequence completes
         _ble_queue.task_done()
 
+
 def trigger_leds():
     """Safe wrapper to run async Bluetooth tasks from synchronous loops"""
     if _is_animating.is_set():
-        return # Ignore triggers if an animation is already in progress
+        return  # Ignore triggers if an animation is already in progress
     _ble_queue.put("trigger")
+
 
 def run_detection():
     # Start background BLE worker thread once when detection begins
     t = threading.Thread(target=_ble_worker, daemon=True)
     t.start()
-    
+
     # Request base color lights immediately upon starting
     _ble_queue.put("startup")
 
@@ -121,9 +129,10 @@ def run_detection():
     cap = cv2.VideoCapture(CAPTUR_CARD_INDEX, cv2.CAP_DSHOW)
 
     # Load the template image in color (BGR) for precise color matching
-    template = cv2.imread('template.png', cv2.IMREAD_COLOR)
+    template = cv2.imread('images/green_j.png', cv2.IMREAD_COLOR)
     if template is None:
-        print("Error: 'template.png' not found! Please save a screenshot of the banner as 'template.png' in this directory.")
+        print(
+            "Error: 'template.png' not found! Please save a screenshot of the banner as 'template.png' in this directory.")
         return
 
     print("Started monitoring for 'TIMING EXCELLENT' banner... Press 'q' to exit.")
@@ -151,6 +160,7 @@ def run_detection():
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     run_detection()

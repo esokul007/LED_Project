@@ -29,6 +29,8 @@ CAPTURE_CARD_INDEX = 1
 CAPTURE_WIDTH = 800
 CAPTURE_HEIGHT = 450
 
+MAX_DIFF = 4  # Maximum allowed increase in detected number to trigger LEDs
+
 crop_coords = []
 
 # LED colors (RGB)
@@ -194,11 +196,11 @@ def run_live_detection(cap, x1, y1, x2, y2):
                 if current_number is not None:
                     print(f"Detected Number: {current_number} (Previous: {previous_number})")
 
-                    if previous_number is not None and current_number > previous_number:
+                    if previous_number is not None and (current_number > previous_number and (current_number < previous_number + MAX_DIFF)):
                         print("Number increased! Triggering LEDs...")
                         trigger_leds()
 
-                    previous_number = current_number if (previous_number is None or (current_number > previous_number and (current_number < previous_number + 4))) else previous_number
+                    previous_number = current_number if (previous_number is None or (current_number > previous_number and (current_number < previous_number + MAX_DIFF))) else previous_number
 
         cv2.imshow("Live Monitor", frame)
 

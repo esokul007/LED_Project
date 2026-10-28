@@ -39,15 +39,15 @@ CROP_HEIGHT = 60
 CROP_X = (CAPTURE_WIDTH // 2) - CROP_WIDTH
 CROP_Y = 18
 
+"""
 # Distance box config (directly to the right of the timing box, starting at screen center)
 DIST_WIDTH = 14  # Tighter width to isolate just the number digits
 DIST_HEIGHT = 20
 DIST_X = (CAPTURE_WIDTH // 2) + 66  # Overlaps/shifts to catch the number cleanly
 DIST_Y = CROP_Y + 30  # Slightly lower to align with the number digits
+"""
 
-"""
-CTRL-S to get image from cropped python window, then crop to the timing box and save as green_j_center.png
-"""
+# CTRL-S to get image from cropped python window, then crop to the timing box and save as green_j_center.png
 # Template image
 TEMPLATE_PATH = (
     Path(__file__).parent / "images" / "green_shot_only.png"

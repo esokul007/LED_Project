@@ -1,8 +1,11 @@
+from random import random
 import sys
 import asyncio
 import threading
 import queue
 import time
+import pygame
+import random
 from pathlib import Path
 
 import cv2
@@ -22,6 +25,9 @@ if sys.platform.startswith("win"):
 # ==========================================
 # CONFIGURATION
 # ==========================================
+
+# Initialize pygame mixer for audio playback
+pygame.mixer.init()
 
 LIGHT_MAC_ADDRESS = "36:46:3F:52:DB:31"
 
@@ -43,6 +49,9 @@ CROP_Y = 18
 TEMPLATE_PATH = (
     Path(__file__).parent / "images" / "green_shot_only.png"
 )
+
+# Define your sounds directory
+SOUNDS_DIR = Path(__file__).parent / "sounds"
 
 MATCH_THRESHOLD = 0.85
 REARM_FRAMES = 5
@@ -172,6 +181,24 @@ def _ble_worker():
 
     loop.close()
 
+def play_random_sound():
+    try:
+        # Find all mp3 files in your sounds folder
+        mp3_files = list(SOUNDS_DIR.glob("*.mp3"))
+
+        if not mp3_files:
+            print("No MP3 files found in sounds/ directory.")
+            return
+
+        # Pick a random sound file
+        chosen_sound = random.choice(mp3_files)
+
+        # Load and play the MP3
+        pygame.mixer.music.load(str(chosen_sound))
+        pygame.mixer.music.play()
+    except Exception as e:
+        print(f"Audio error: {e}")
+  
 
 def trigger_leds():
     if _is_animating.is_set():
@@ -352,6 +379,7 @@ def run_detection():
                         f"Confidence: {confidence:.3f}"
                     )
                     trigger_leds()
+                    play_random_sound()
             else:
                 missing_frames += 1
 

@@ -1,4 +1,3 @@
-from random import random
 import sys
 import asyncio
 import threading
@@ -32,7 +31,7 @@ pygame.mixer.init()
 LIGHT_MAC_ADDRESS = "36:46:3F:52:DB:31"
 
 # Physical capture card (0 on Pi, 1 on Windows)
-CAPTURE_CARD_INDEX = 0
+CAPTURE_CARD_INDEX = 1
 
 CAPTURE_WIDTH = 1920
 CAPTURE_HEIGHT = 1080
@@ -195,6 +194,7 @@ def play_random_sound():
 
         # Load and play the MP3
         pygame.mixer.music.load(str(chosen_sound))
+        pygame.mixer.music.set_volume(1.0) # set volume to max
         pygame.mixer.music.play()
     except Exception as e:
         print(f"Audio error: {e}")

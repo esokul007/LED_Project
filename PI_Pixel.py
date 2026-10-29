@@ -31,7 +31,7 @@ pygame.mixer.init()
 LIGHT_MAC_ADDRESS = "36:46:3F:52:DB:31"
 
 # Physical capture card (0 on Pi, 1 on Windows)
-CAPTURE_CARD_INDEX = 0
+CAPTURE_CARD_INDEX = 1
 
 CAPTURE_WIDTH = 640
 CAPTURE_HEIGHT = 360
@@ -44,15 +44,9 @@ CROP_HEIGHT = 15
 CROP_X = (CAPTURE_WIDTH // 2) - CROP_WIDTH
 CROP_Y = 9
 
-# Template image path
-TEMPLATE_PATH = (
-    Path(__file__).parent / "images" / "green_shot_only.png"
-)
-
 # Define your sounds directory
 SOUNDS_DIR = Path(__file__).parent / "sounds"
 
-MATCH_THRESHOLD = 0.85
 REARM_FRAMES = 5
 
 # LED colors (RGB)
@@ -107,9 +101,11 @@ def _ble_worker():
                         0xF0,
                         0xAA
                     ])
+                    # Using response=False for instant, non-blocking BLE writes
                     await client.write_gatt_char(
                         target_char,
-                        command
+                        command,
+                        response=False
                     )
 
                 # Set base color at startup
@@ -180,25 +176,23 @@ def _ble_worker():
 
     loop.close()
 
+
 def play_random_sound():
     try:
-        # Find all mp3 files in your sounds folder
         mp3_files = list(SOUNDS_DIR.glob("*.mp3"))
 
         if not mp3_files:
             print("No MP3 files found in sounds/ directory.")
             return
 
-        # Pick a random sound file
         chosen_sound = random.choice(mp3_files)
 
-        # Load and play the MP3
         pygame.mixer.music.load(str(chosen_sound))
-        pygame.mixer.music.set_volume(1.0) # set volume to max
+        pygame.mixer.music.set_volume(1.0)  # Max volume
         pygame.mixer.music.play()
     except Exception as e:
         print(f"Audio error: {e}")
-  
+
 
 def trigger_leds():
     if _is_animating.is_set():
@@ -249,47 +243,20 @@ def crop_frame(frame):
 
 
 # ==========================================
-# TEMPLATE MATCHING
+# COLOR DETECTION (HSV)
 # ==========================================
-
-def load_template():
-    template = cv2.imread(
-        str(TEMPLATE_PATH),
-        cv2.IMREAD_COLOR
-    )
-
-    if template is None:
-        raise FileNotFoundError(
-            f"Cannot load template: {TEMPLATE_PATH}"
-        )
-
-    template = cv2.resize(
-        template,
-        (CROP_WIDTH, CROP_HEIGHT),
-        interpolation=cv2.INTER_AREA
-    )
-
-    print(
-        f"Template loaded: "
-        f"{template.shape[1]}x{template.shape[0]}"
-    )
-
-    return template
-
 
 def check_banner(cropped):
     hsv_crop = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
-    lower_green = np.array([50, 210, 210])   # Example lower bound for bright green
-    upper_green = np.array([70, 255, 255])   # Example upper bound
+    
+    # Tuned green range matching your timing window banner
+    lower_green = np.array([50, 120, 150])
+    upper_green = np.array([85, 255, 255])
 
     mask = cv2.inRange(hsv_crop, lower_green, upper_green)
+    green_pixel_count = cv2.countNonZero(mask)
 
-    green_pixel_count = np.count_nonzero(mask)
-
-    # If a certain number of pixels light up green, it's an Excellent!
-    if green_pixel_count > 30:  # Adjust threshold based on your crop size
-        print("EXCELLENT SHOT DETECTED!")
-        # Trigger your BLE LED animation and audio here!
+    if green_pixel_count > 50:  # Threshold adjusted for crop size
         return True
     return False
 
@@ -328,15 +295,6 @@ def run_detection():
     actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     print(f"Capture card resolution: {actual_width}x{actual_height}")
-
-    try:
-        template = load_template()
-    except FileNotFoundError as e:
-        print(e)
-        cap.release()
-        _ble_queue.put(None)
-        return
-
     print("Monitoring for TIMING EXCELLENT (Headless Mode)...")
     print("Press Ctrl+C to exit.")
 
@@ -350,14 +308,13 @@ def run_detection():
         
             if not ret or frame is None:
                 print("\nERROR, Capture Card is not plugged into PI. Pausing detection...")
-                # Check less frequently when off to save CPU (e.g., every 30 seconds)
                 time.sleep(30)
                 continue
 
+            # Original single-frame blackout check
             if np.mean(frame) < 2.0:
                 print("\nERROR, XBOX is off. Pausing detection...")
                 xbox_on = False
-
                 time.sleep(30)
                 continue
 
@@ -368,7 +325,7 @@ def run_detection():
             # Crop timing box
             cropped = crop_frame(frame)
 
-            # Perform template matching
+            # Perform HSV color detection
             detected = check_banner(cropped)
 
             # ==================================
@@ -380,9 +337,7 @@ def run_detection():
 
                 if not banner_active:
                     banner_active = True
-                    print(
-                        f"EXCELLENT DETECTED! "
-                    )
+                    print("EXCELLENT DETECTED!")
                     trigger_leds()
                     play_random_sound()
             else:
@@ -390,9 +345,6 @@ def run_detection():
 
                 if missing_frames >= REARM_FRAMES:
                     banner_active = False
-
-            # Small sleep to prevent 100% CPU usage in headless loops (~30 FPS)
-            time.sleep(0.03)
 
     except KeyboardInterrupt:
         print("\nStopped by user.")

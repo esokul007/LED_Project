@@ -31,7 +31,7 @@ pygame.mixer.init()
 LIGHT_MAC_ADDRESS = "36:46:3F:52:DB:31"
 
 # Physical capture card (0 on Pi, 1 on Windows)
-CAPTURE_CARD_INDEX = 1
+CAPTURE_CARD_INDEX = 0
 
 CAPTURE_WIDTH = 640
 CAPTURE_HEIGHT = 360

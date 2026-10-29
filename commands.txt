@@ -11,3 +11,6 @@ sudo journalctl -u led_tracker.service -f
 # Stops service if you want to edit code
 sudo systemctl stop led_tracker.service
 
+# Increases each file in sounds by 10 decibals
+cd ~/LED_Project/sounds
+for f in *.mp3; do ffmpeg -i "$f" -filter:a "volume=10dB" "boosted_$f"; done

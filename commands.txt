@@ -1,0 +1,13 @@
+# Enables and starts the service
+sudo systemctl enable led_tracker.service
+sudo systemctl start led_tracker.service
+
+# Checks if led_tracker is up and running well
+sudo systemctl status led_tracker.service
+
+# Views live terminal printouts of service (like match confidence score)
+sudo journalctl -u led_tracker.service -f
+
+# Stops service if you want to edit code
+sudo systemctl stop led_tracker.service
+

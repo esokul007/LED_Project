@@ -129,7 +129,7 @@ def run_detection():
     cap = cv2.VideoCapture(CAPTUR_CARD_INDEX, cv2.CAP_DSHOW)
 
     # Load the template image in color (BGR) for precise color matching
-    template = cv2.imread('images/green_j.png', cv2.IMREAD_COLOR)
+    template = cv2.imread('../images/green_j.png', cv2.IMREAD_COLOR)
     if template is None:
         print(
             "Error: 'template.png' not found! Please save a screenshot of the banner as 'template.png' in this directory.")

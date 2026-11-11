@@ -45,7 +45,7 @@ CROP_X = (CAPTURE_WIDTH // 2) - CROP_WIDTH
 CROP_Y = 9
 
 # Define your sounds directory
-SOUNDS_DIR = Path(__file__).parent / "sounds"
+SOUNDS_DIR = Path(__file__).parent / "sounds" # tester for testing, sounds normally
 
 REARM_FRAMES = 5
 
@@ -256,7 +256,7 @@ def check_banner(cropped):
     mask = cv2.inRange(hsv_crop, lower_green, upper_green)
     green_pixel_count = cv2.countNonZero(mask)
 
-    if green_pixel_count > 100:  # Threshold adjusted for crop size
+    if green_pixel_count > 200:  # Threshold adjusted for crop size
         return True
     return False
 
